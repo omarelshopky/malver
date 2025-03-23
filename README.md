@@ -43,7 +43,7 @@ This will install the malver binary in your Go bin directory.
 ## Usage
 
 ```bash
-malver [-port=3000] [-upload=./uploads] [-download=./downloads] [-ping-endpoint=/] [-down-endpoint=/down] [-up-endpoint=/up] [-b64d-endpoint=/b64d]
+malver [-headers] [-port=3000] [-upload=./uploads] [-download=./downloads] [-ping-endpoint=/] [-down-endpoint=/down] [-up-endpoint=/up] [-b64d-endpoint=/b64d]
 ```
 
 
@@ -52,6 +52,7 @@ malver [-port=3000] [-upload=./uploads] [-download=./downloads] [-ping-endpoint=
 
 | Flag | Default | Description |
 | ---- | ---- | ---- |
+| `-headers` | `false` | Log request headers |
 | `-port` | `3000` | Port to run the HTTP server on |
 | `-upload` | `./uploads` | Directory for file uploads |
 | `-download` | `./downloads` | Directory for file downloads |

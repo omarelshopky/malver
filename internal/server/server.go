@@ -4,11 +4,14 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/omarelshopky/malver/internal/handlers"
 	"github.com/omarelshopky/malver/config"
+	"github.com/omarelshopky/malver/internal/handlers"
+	"github.com/omarelshopky/malver/internal/logger"
 )
 
 func Start(cfg config.Config) {
+	logger.InitLogger(cfg)
+
 	http.HandleFunc(cfg.PingEndpoint, handlers.PingHandler)
 	http.HandleFunc(cfg.DownloadEndpoint, handlers.DownloadHandler(cfg.DownloadDir, cfg.DownloadEndpoint))
 	http.HandleFunc(cfg.UploadEndpoint, handlers.UploadHandler(cfg.UploadDir))
