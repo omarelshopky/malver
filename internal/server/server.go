@@ -6,20 +6,17 @@ import (
 
 	"github.com/omarelshopky/malver/config"
 	"github.com/omarelshopky/malver/internal/handlers"
-	"github.com/omarelshopky/malver/internal/logger"
 )
 
-func Start(cfg config.Config) {
-	logger.InitLogger(cfg)
+func Start(port string, endpoints config.EndpointsConfig, dirs config.ServerDirsConfig) {
+	http.HandleFunc(endpoints.Ping, handlers.PingHandler)
+	http.HandleFunc(endpoints.Download, handlers.DownloadHandler(dirs.Download, endpoints.Download))
+	http.HandleFunc(endpoints.Upload, handlers.UploadHandler(dirs.Upload))
+	http.HandleFunc(endpoints.B64Decode, handlers.B64DecodeHandler)
 
-	http.HandleFunc(cfg.PingEndpoint, handlers.PingHandler)
-	http.HandleFunc(cfg.DownloadEndpoint, handlers.DownloadHandler(cfg.DownloadDir, cfg.DownloadEndpoint))
-	http.HandleFunc(cfg.UploadEndpoint, handlers.UploadHandler(cfg.UploadDir))
-	http.HandleFunc(cfg.B64DecodeEndpoint, handlers.B64DecodeHandler)
+	log.Printf("Starting server on :%s", port)
 
-	log.Printf("Starting server on :%s", cfg.Port)
-
-	if err := http.ListenAndServe(":"+cfg.Port, nil); err != nil {
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
 }

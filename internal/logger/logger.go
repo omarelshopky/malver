@@ -11,104 +11,130 @@ import (
 	"github.com/omarelshopky/malver/config"
 )
 
+var logConfig *config.LoggingConfig
+var logger = log.New(log.Writer(), "", 0)
 
-var cfg config.Config
+type TableFormatter struct {
+	maxColWidth int
+}
 
-var headerLogger = log.New(log.Writer(), "", 0)
-
-func InitLogger(c config.Config) {
-	cfg = c
+func InitLogger(loggingConfig *config.LoggingConfig) {
+	logConfig = loggingConfig
 }
 
 func LogRequest(r *http.Request, status int, message string) {
+	postData := getRequestPostData(r)
+
+	log.Printf("%s \"%s %s %s\" %d %s | %s",
+		r.RemoteAddr, r.Method, r.URL.RequestURI(), r.Proto,
+		status, postData, message)
+
+	tf := TableFormatter{maxColWidth: 60}
+
+	if logConfig.Headers {
+		logger.Println(tf.FormatTable("Header", "Value", r.Header))
+	}
+
+	if logConfig.Params {
+		logger.Println(tf.FormatTable("Parameter", "Value", r.URL.Query()))
+	}
+}
+
+func getRequestPostData(r *http.Request) string {
 	postData := "-"
 
 	if r.Method == http.MethodPost && r.Body != nil {
 		bodyBytes, err := io.ReadAll(r.Body)
+
 		if err == nil {
 			postData = string(bodyBytes)
-			// Restore the request body since it gets read
 			r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 		}
 	}
 
-	log.Printf("%s \"%s %s %s\" %d %s | %s", r.RemoteAddr, r.Method, r.URL.RequestURI(), r.Proto, status, postData, message)
-
-	if cfg.LogHeaders {
-		headerLogger.Println(formatHeadersTable(r.Header))
-	}
+	return postData
 }
 
-func formatHeadersTable(headers http.Header) string {
+func (tf *TableFormatter) FormatTable(col1Header, col2Header string, data map[string][]string) string {
 	var builder strings.Builder
 
-	maxKeyLen := 0
-	maxValLen := 0
+	col1Width := len(col1Header)
+	col2Width := len(col2Header)
 
-	for key, values := range headers {
-		maxKeyLen = max(maxKeyLen, len(key))
-
-		for _, value := range values {
-			maxValLen = max(maxValLen, len(value))
+	// Calculate column widths
+	for key, values := range data {
+		col1Width = max(col1Width, len(key))
+		for _, val := range values {
+			col2Width = max(col2Width, len(val))
 		}
 	}
 
-	maxKeyLen = min(maxKeyLen + 2, 60)
-	maxValLen = min(maxValLen + 2, 60)
+	// Apply width constraints
+	col1Width = min(col1Width+2, tf.maxColWidth)
+	col2Width = min(col2Width+2, tf.maxColWidth)
 
-	border := fmt.Sprintf("┌%s┬%s┐\n", strings.Repeat("─", maxKeyLen), strings.Repeat("─", maxValLen))
-	headerRow := fmt.Sprintf("│ %-*s │ %-*s │\n", maxKeyLen-2, "Header", maxValLen-2, "Value")
-	divider := fmt.Sprintf("├%s┼%s┤\n", strings.Repeat("─", maxKeyLen), strings.Repeat("─", maxValLen))
-	footer := fmt.Sprintf("└%s┴%s┘\n", strings.Repeat("─", maxKeyLen), strings.Repeat("─", maxValLen))
+	// Table construction components
+	border := fmt.Sprintf("┌%s┬%s┐\n",
+		strings.Repeat("─", col1Width),
+		strings.Repeat("─", col2Width))
+	header := fmt.Sprintf("│ %-*s │ %-*s │\n",
+		col1Width-2, col1Header,
+		col2Width-2, col2Header)
+	divider := fmt.Sprintf("├%s┼%s┤\n",
+		strings.Repeat("─", col1Width),
+		strings.Repeat("─", col2Width))
+	footer := fmt.Sprintf("└%s┴%s┘",
+		strings.Repeat("─", col1Width),
+		strings.Repeat("─", col2Width))
 
 	builder.WriteString(border)
-	builder.WriteString(headerRow)
+	builder.WriteString(header)
 	builder.WriteString(divider)
 
-	for key, values := range headers {
-		wrappedKey := wrapText(key, maxKeyLen-2)
+	// Process each data entry
+	for key, values := range data {
+		wrappedKey := tf.wrapText(key, col1Width-2)
 
 		for _, value := range values {
-			wrappedValue := wrapText(value, maxValLen-2)
+			wrappedValue := tf.wrapText(value, col2Width-2)
+			maxLines := max(len(wrappedKey), len(wrappedValue))
 
-			maxRows := max(len(wrappedKey), len(wrappedValue))
+			for i := 0; i < maxLines; i++ {
+				keyPart := tf.getLine(wrappedKey, i)
+				valPart := tf.getLine(wrappedValue, i)
 
-			for i := 0; i < maxRows; i++ {
-				keyPart := ""
-				if i < len(wrappedKey) {
-					keyPart = wrappedKey[i]
-				}
-
-				valuePart := ""
-				if i < len(wrappedValue) {
-					valuePart = wrappedValue[i]
-				}
-
-				builder.WriteString(fmt.Sprintf("│ %-*s │ %-*s │\n", maxKeyLen-2, keyPart, maxValLen-2, valuePart))
+				builder.WriteString(fmt.Sprintf("│ %-*s │ %-*s │\n",
+					col1Width-2, keyPart,
+					col2Width-2, valPart))
 			}
 		}
 	}
 
 	builder.WriteString(footer)
-
 	return builder.String()
 }
 
-func wrapText(text string, width int) []string {
+func (tf *TableFormatter) wrapText(text string, width int) []string {
 	var lines []string
+	remaining := text
 
-	for len(text) > width {
-		split := width
-
-		if space := strings.LastIndex(text[:width], " "); space > 0 {
-			split = space
+	for len(remaining) > 0 {
+		split := min(width, len(remaining))
+		if spaceIdx := strings.LastIndex(remaining[:split], " "); spaceIdx > 0 {
+			split = spaceIdx
 		}
-
-		lines = append(lines, text[:split])
-		text = text[split:]
+		lines = append(lines, remaining[:split])
+		remaining = remaining[split:]
+		if len(remaining) > 0 && remaining[0] == ' ' {
+			remaining = remaining[1:]
+		}
 	}
-
-	lines = append(lines, text)
-
 	return lines
+}
+
+func (tf *TableFormatter) getLine(lines []string, index int) string {
+	if index < len(lines) {
+		return lines[index]
+	}
+	return ""
 }

