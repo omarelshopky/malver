@@ -21,7 +21,7 @@ func main() {
 			fmt.Println("[WARNING] Both -ip and -file should be used with -upload-commands to generate ready-to-use upload commands.")
 		}
 
-		handlers.GenerateUploadCommands(cfg.AttackingIP, cfg.FilePath)
+		handlers.GenerateUploadCommands(cfg.UploadEndpoint, cfg.AttackingIP, cfg.Port, cfg.FilePath)
 
 		return
 	}
