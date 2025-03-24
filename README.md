@@ -33,7 +33,7 @@ Malver (**Mal**icious Ser**ver**) is a lightweight HTTP server designed to simpl
 Ensure you have Go installed, then run:
 
 ```bash
-go install github.com/omarelshopky/malver/cmd@latest
+go install github.com/omarelshopky/malver/cmd/malver@latest
 ```
 
 This will install the malver binary in your Go bin directory.
